@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "Maximilian-Maag.keepassxc",
+  "name": "KeePassXC",
+  "version": "1.0.0",
+  "author": "Maximilian-Maag",
+  "license": "MIT",
+  "description": "KeePassXC password manager for Omarchy — replaces the default 1Password shortcut (Super+Shift+/), autostart at login, browser integration for qutebrowser.",
+  "kinds": ["app-config"],
+  "activation": "auto",
+  "entryPoints": {},
+  "omarchy_meta": {
+    "installScript": "install.sh",
+    "features": [
+      "Replaces Super+Shift+/ (1Password) with KeePassXC launch-or-focus",
+      "Adds KeePassXC to Hyprland autostart",
+      "Installs pynacl for qutebrowser browser integration",
+      "Step-by-step Browser Integration setup instructions"
+    ]
+  }
+}
