@@ -9,19 +9,41 @@ HYPR_MAIN="$HYPR_CONFIG_DIR/hyprland.lua"
 
 echo "omarchy-keepassxc: installing from $PLUGIN_DIR"
 
-# ── 1. Install KeePassXC ──────────────────────────────────────────────────────
+# ── 1. Replace KeePass2 with KeePassXC ────────────────────────────────────────
+# Remove KeePass2 (Mono) if installed — it conflicts with KeePassXC browser integration
+if pacman -Qi keepass &>/dev/null; then
+  echo "  Removing KeePass2 (replaced by KeePassXC)..."
+  # Kill any running KeePass2 instance first
+  pkill -f "KeePass.exe" 2>/dev/null || true
+  sleep 1
+  if [[ $EUID -eq 0 ]]; then
+    pacman -Rs --noconfirm keepass 2>/dev/null || pacman -R --noconfirm keepass 2>/dev/null || true
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo pacman -Rs --noconfirm keepass 2>/dev/null || sudo pacman -R --noconfirm keepass 2>/dev/null || true
+  fi
+  echo "  KeePass2 removed."
+fi
+
+# Install KeePassXC
 omarchy pkg add keepassxc
 echo "  KeePassXC installed."
 
-# ── 2. Install pynacl (for qutebrowser integration) ───────────────────────────
+# ── 2. Open existing database in KeePassXC ────────────────────────────────────
+# If user has a .kdbx file that was used with KeePass2, KeePassXC reads the
+# same format — no migration needed. Just open it.
+KDBX=$(find "$HOME" -name "*.kdbx" -not -path "*/\.Trash/*" 2>/dev/null | head -1)
+if [[ -n "$KDBX" ]]; then
+  echo "  Found database: $KDBX"
+  echo "  KeePassXC reads KeePass2 .kdbx files directly — no migration needed."
+fi
+
+# ── 3. Install pynacl (for qutebrowser integration) ───────────────────────────
 if ! /usr/bin/python3 -c "import nacl" 2>/dev/null; then
   omarchy pkg add python-pynacl 2>/dev/null || pip install --break-system-packages pynacl 2>/dev/null || true
 fi
 echo "  pynacl available."
 
-# ── 3. Enable Browser Integration via autostart ───────────────────────────────
-# KeePassXC browser integration requires the app to be running.
-# Add it to Hyprland autostart if not already there.
+# ── 4. Add KeePassXC to autostart ─────────────────────────────────────────────
 AUTOSTART="$HYPR_CONFIG_DIR/autostart.lua"
 if [[ -f "$AUTOSTART" ]] && ! grep -q "keepassxc" "$AUTOSTART"; then
   printf '\n-- omarchy-keepassxc: start KeePassXC at login\no.launch_on_start("keepassxc")\n' >> "$AUTOSTART"
@@ -32,7 +54,7 @@ else
   echo "  No autostart.lua found — add manually: o.launch_on_start(\"keepassxc\")"
 fi
 
-# ── 4. Wire OS keybindings into Hyprland ──────────────────────────────────────
+# ── 5. Wire OS keybindings into Hyprland ──────────────────────────────────────
 if [[ ! -f "$HYPR_MAIN" ]]; then
   echo "  WARNING: $HYPR_MAIN not found — skipping keybinding wiring."
 else
@@ -45,17 +67,22 @@ else
   fi
 fi
 
-# ── 5. Reload Hyprland ────────────────────────────────────────────────────────
+# ── 6. Reload Hyprland ────────────────────────────────────────────────────────
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
   hyprctl reload >/dev/null 2>&1 && echo "  Hyprland reloaded." || true
 else
   echo "  Run 'hyprctl reload' to activate keybindings."
 fi
 
-# ── 6. Print setup instructions ───────────────────────────────────────────────
+# ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "Done!"
 echo ""
+if [[ -n "${KDBX:-}" ]]; then
+  echo "Your database: $KDBX"
+  echo "Open it in KeePassXC — the format is identical to KeePass2, no migration needed."
+  echo ""
+fi
 echo "Next: enable Browser Integration in KeePassXC:"
 echo "  Tools > Settings > Browser Integration > Enable browser integration"
 echo "  Tick: Chromium-based browsers (for qutebrowser)"

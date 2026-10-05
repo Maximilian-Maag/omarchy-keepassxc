@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "Maximilian-Maag",
   "license": "MIT",
-  "description": "KeePassXC password manager for Omarchy — replaces the default 1Password shortcut (Super+Shift+/), autostart at login, browser integration for qutebrowser.",
+  "description": "Replaces KeePass2 with KeePassXC for Omarchy — removes keepass/mono, installs KeePassXC, wires Super+Shift+/ keybinding, autostart at login, browser integration for qutebrowser. Existing .kdbx databases open directly in KeePassXC with no migration.",
   "kinds": ["app-config"],
   "activation": "auto",
   "entryPoints": {},
