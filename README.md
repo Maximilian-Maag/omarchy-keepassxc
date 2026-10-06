@@ -12,6 +12,7 @@ Replaces KeePass2 with [KeePassXC](https://keepassxc.org/) for [Omarchy](https:/
 | Keybinding | `Super+Shift+/` launches or focuses KeePassXC (replaces 1Password default) |
 | Autostart | KeePassXC starts at login via `autostart.lua` |
 | Workspace | Opens on workspace 5 at login (silent — does not switch your active workspace) |
+| Theme | Follows the Omarchy light/dark mode via a `theme-set` hook (KeePassXC has no Omarchy palette support, so it matches dark/light) |
 | Browser integration | Works with qutebrowser via `qute-keepassxc --insecure` |
 
 ## Installation

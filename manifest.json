@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "Maximilian-Maag.keepassxc",
   "name": "KeePassXC",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Maximilian-Maag",
   "license": "MIT",
   "description": "Replaces KeePass2 with KeePassXC for Omarchy — removes keepass/mono, installs KeePassXC, wires Super+Shift+/ keybinding, autostart at login, browser integration for qutebrowser. Existing .kdbx databases open directly in KeePassXC with no migration.",
@@ -11,11 +11,13 @@
   "entryPoints": {},
   "omarchy_meta": {
     "installScript": "install.sh",
+    "hooks": ["theme-set"],
     "features": [
       "Replaces Super+Shift+/ (1Password) with KeePassXC launch-or-focus",
       "Adds KeePassXC to Hyprland autostart",
       "Installs pynacl for qutebrowser browser integration",
       "Opens KeePassXC on workspace 5 at login (silent — does not steal focus)",
+      "Themes KeePassXC to match the Omarchy light/dark mode (theme-set hook)",
       "Step-by-step Browser Integration setup instructions"
     ]
   }
