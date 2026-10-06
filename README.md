@@ -11,6 +11,7 @@ Replaces KeePass2 with [KeePassXC](https://keepassxc.org/) for [Omarchy](https:/
 | No migration | KeePassXC reads existing `.kdbx` files directly |
 | Keybinding | `Super+Shift+/` launches or focuses KeePassXC (replaces 1Password default) |
 | Autostart | KeePassXC starts at login via `autostart.lua` |
+| Workspace | Opens on workspace 5 at login (silent — does not switch your active workspace) |
 | Browser integration | Works with qutebrowser via `qute-keepassxc --insecure` |
 
 ## Installation
