@@ -1,4 +1,4 @@
-"""Integration tests: hooks/theme-set end-to-end in a fake environment.
+"""Integration tests: hooks/keepassxc-theme-set end-to-end in a fake environment.
 
 The real hook is executed as a subprocess with a temporary HOME and
 XDG_CONFIG_HOME, a fake Omarchy theme tree, and stub pgrep/pkill/setsid/
@@ -14,7 +14,7 @@ import tempfile
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-HOOK = REPO / "hooks/theme-set"
+HOOK = REPO / "hooks/keepassxc-theme-set"
 
 PASSTHROUGH_PY = """#!/bin/bash
 echo "python3 $*" >> "$STUB_LOG"
@@ -74,6 +74,7 @@ class ThemeSetIntegrationCase(unittest.TestCase):
         env = dict(os.environ)
         env["HOME"] = str(self.home)
         env["XDG_CONFIG_HOME"] = str(self.config)
+        env["OMARCHY_KEEPASSXC_DIR"] = str(REPO)
         env["PATH"] = f"{self.bin}:{env['PATH']}"
         env["STUB_LOG"] = str(self.log)
         env.pop("HYPRLAND_INSTANCE_SIGNATURE", None)

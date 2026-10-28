@@ -71,14 +71,14 @@ fi
 # KeePassXC does not follow the Omarchy palette and its "auto" theme shows the
 # unlock window light, so set its ApplicationTheme to match the active theme
 # and keep it in sync on future theme switches.
-chmod +x "$PLUGIN_DIR/hooks/theme-set" "$PLUGIN_DIR/bin/keepassxc-theme.py"
+chmod +x "$PLUGIN_DIR/hooks/keepassxc-theme-set" "$PLUGIN_DIR/bin/keepassxc-theme.py"
 CURRENT_THEME=$(omarchy theme current 2>/dev/null || true)
 if [[ -n "$CURRENT_THEME" ]]; then
-  bash "$PLUGIN_DIR/hooks/theme-set" "$CURRENT_THEME" || true
+  OMARCHY_KEEPASSXC_DIR="$PLUGIN_DIR" bash "$PLUGIN_DIR/hooks/keepassxc-theme-set" "$CURRENT_THEME" || true
   echo "  Set KeePassXC theme to match: $CURRENT_THEME"
 fi
-omarchy hook install theme-set "$PLUGIN_DIR/hooks/theme-set"
-echo "  Installed theme-set hook."
+omarchy hook install theme-set "$PLUGIN_DIR/hooks/keepassxc-theme-set"
+echo "  Installed theme-set hook (as keepassxc-theme-set)."
 
 # ── 6. Reload Hyprland ────────────────────────────────────────────────────────
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then

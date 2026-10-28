@@ -18,12 +18,32 @@
     {
       "path": "bin/keepassxc-theme.py",
       "lang": "python",
-      "tests": ["python3", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*keepassxc_theme.py", "-q"]
+      "tests": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_*keepassxc_theme.py",
+        "-q"
+      ]
     },
     {
-      "path": "hooks/theme-set",
+      "path": "hooks/keepassxc-theme-set",
       "lang": "shell",
-      "tests": ["bash", "tests/shell/test_theme_set.sh"]
+      "tests": [
+        "bash",
+        "tests/shell/test_theme_set.sh"
+      ],
+      "equivalent": [
+        {
+          "line": 70,
+          "kind": "or->and",
+          "reason": "pkill -x keepassxc 2>/dev/null || true -> && true: a failing command inside an && / || list is exempt from set -e, so both forms let the hook continue to the restart; the difference is unobservable."
+        }
+      ]
     }
   ],
   "exempt": [

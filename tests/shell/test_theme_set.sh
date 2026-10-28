@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shell tests for hooks/theme-set — plain bash, no bats.
+# Shell tests for hooks/keepassxc-theme-set — plain bash, no bats.
 #
 # The hook is run against a fake HOME/XDG_CONFIG_HOME and stub pgrep/pkill/
 # setsid/uwsm-app/sleep/python3 binaries, so the real session is never touched.
@@ -7,7 +7,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HOOK="$ROOT/hooks/theme-set"
+HOOK="$ROOT/hooks/keepassxc-theme-set"
 REAL_PY="$(command -v python3)"
 ORIG_PATH="$PATH"
 
@@ -60,7 +60,7 @@ mktheme() { # name mode
 run_hook() { # theme [pgrep_rc]
   local theme="${1:-}" prc="${2:-1}"
   HOME="$HOME_FAKE" XDG_CONFIG_HOME="$CONFIG" PATH="$BIN:$ORIG_PATH" \
-    STUB_LOG="$LOG" STUB_PGREP_RC="$prc" bash "$HOOK" $theme
+    OMARCHY_KEEPASSXC_DIR="$ROOT" STUB_LOG="$LOG" STUB_PGREP_RC="$prc" bash "$HOOK" $theme
 }
 
 reset() {
@@ -118,5 +118,51 @@ mkdir -p "$CONFIG/keepassxc"
 printf '[GUI]\nApplicationTheme=dark\n' > "$INI"
 run_hook nord 0
 assert_not_contains "$LOG" "pkill" "an unchanged mode never restarts KeePassXC"
+
+# ── self-location when INSTALLED (not run from the repo checkout) ─────────
+# `omarchy hook install` copies the hook to <XDG_CONFIG_HOME>/omarchy/hooks/theme-set.d/
+# and the plugin to <XDG_CONFIG_HOME>/omarchy/plugins/…; the hook must still find it.
+inst="$TMP/inst"
+plug="$inst/omarchy/plugins/Maximilian-Maag.keepassxc"
+mkdir -p "$plug" "$inst/omarchy/hooks/theme-set.d" "$inst/omarchy/themes/nord"
+cp -a "$ROOT/bin" "$plug/"
+cp "$HOOK" "$inst/omarchy/hooks/theme-set.d/keepassxc-theme-set"
+printf 'mode = "dark"\n' > "$inst/omarchy/themes/nord/colors.toml"
+: > "$LOG"
+HOME="$HOME_FAKE" XDG_CONFIG_HOME="$inst" PATH="$BIN:$ORIG_PATH" \
+  OMARCHY_KEEPASSXC_DIR="" STUB_LOG="$LOG" STUB_PGREP_RC=1 \
+  bash "$inst/omarchy/hooks/theme-set.d/keepassxc-theme-set" nord
+assert_contains "$inst/keepassxc/keepassxc.ini" "ApplicationTheme=dark" \
+  "installed hook: finds its plugin and applies the theme"
+
+# ── a non-empty candidate path WITHOUT the CLI is skipped, not selected ────
+reset; mktheme nord dark
+decoy="$TMP/decoy"; mkdir -p "$decoy"      # exists, but no bin/keepassxc-theme.py
+: > "$LOG"
+HOME="$HOME_FAKE" XDG_CONFIG_HOME="$inst" PATH="$BIN:$ORIG_PATH" \
+  OMARCHY_KEEPASSXC_DIR="$decoy" STUB_LOG="$LOG" STUB_PGREP_RC=1 \
+  bash "$inst/omarchy/hooks/theme-set.d/keepassxc-theme-set" nord
+assert_contains "$inst/keepassxc/keepassxc.ini" "ApplicationTheme=dark" \
+  "a candidate lacking the CLI is skipped for the real plugin"
+
+# ── a failing pkill must not abort the hook (the `|| true`) ────────────────
+reset; mktheme nord dark
+mkdir -p "$CONFIG/keepassxc"
+printf '[GUI]\nApplicationTheme=light\n' > "$INI"
+: > "$LOG"
+HOME="$HOME_FAKE" XDG_CONFIG_HOME="$CONFIG" PATH="$BIN:$ORIG_PATH" \
+  OMARCHY_KEEPASSXC_DIR="$ROOT" STUB_LOG="$LOG" STUB_PGREP_RC=0 STUB_PKILL_RC=1 \
+  bash "$HOOK" nord
+rc=$?
+# The restart itself is backgrounded ((cmd &)), so its log write races the read —
+# assert the synchronous property instead: a failed pkill must not abort the hook.
+if (( rc == 0 )); then pass "a failing pkill does not abort the hook"; else fail "a failing pkill must not abort the hook (got $rc)"; fi
+
+# ── with the plugin nowhere, fail LOUDLY (never a silent no-op) ────────────
+mkdir -p "$TMP/empty" "$TMP/nohome"
+HOME="$TMP/nohome" XDG_CONFIG_HOME="$TMP/empty" PATH="$BIN:$ORIG_PATH" \
+  OMARCHY_KEEPASSXC_DIR="" STUB_LOG="$LOG" bash "$HOOK" nord 2>"$TMP/err"; rc=$?
+if (( rc != 0 )); then pass "no plugin found: fails loudly"; else fail "no plugin found: must fail loudly"; fi
+assert_contains "$TMP/err" "cannot locate" "no plugin found: the failure is explained"
 
 exit "$FAIL"
