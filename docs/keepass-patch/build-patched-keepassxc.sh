@@ -66,6 +66,13 @@ prepare() {
 EOF
 
 echo "==> building (this takes a while)"
+# The packaging repo ships the release signing keys in keys/pgp/, but makepkg only
+# finds them if the user's gnupg home already has them. Seed them so the source
+# signature is still verified rather than skipped.
+if compgen -G "keys/pgp/*.asc" >/dev/null; then
+  gpg --import keys/pgp/*.asc >/dev/null 2>&1 || true
+fi
+
 # --nocheck: upstream's check() runs the GUI test suite under xvfb, which we do
 # not need to prove the palette patch works.
 makepkg -f --nocheck --noconfirm
