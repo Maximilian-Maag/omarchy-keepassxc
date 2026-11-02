@@ -73,6 +73,6 @@ script afterwards. This is the same trade-off as the patched QtWebEngine in
 
 ## Tests
 
-`tests/test_keepass_palette.py` runs the generator against a fixture source
+`tests/test_unit_keepass_palette.py` runs the generator against a fixture source
 tree and asserts the mapping, idempotency, and that it refuses to run on a
 source it does not recognise.
