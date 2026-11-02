@@ -2,6 +2,21 @@
 
 All notable changes to omarchy-keepassxc are documented here.
 
+## [1.3.2] — 2026-11-02
+
+### Added
+- **A way to make KeePassXC use the desktop palette** (`docs/keepass-patch/`).
+  KeePassXC cannot follow the Omarchy palette: its themes are `auto` (renders
+  light), `light`, `dark` (its own grey) and `classic`, the colours are a C++
+  `QPalette`, and it ignores `QT_QPA_PLATFORMTHEME=gtk3` because its own
+  stylesheet always wins. `render-palette.py` rewrites that palette from the
+  theme's `colors.toml`; `build-patched-keepassxc.sh` builds a patched Arch
+  package. Every substitution is asserted, so a KeePassXC release that changes
+  the files fails loudly instead of shipping a half-themed app. This is a
+  rebuild, like the QtWebEngine patch in omarchy-qutebrowser: re-run it after a
+  stock upgrade. Seven unit tests cover the mapping, idempotency, `--check`,
+  and the guard rails.
+
 ## [1.3.1] — 2026-10-28
 
 ### Fixed
