@@ -49,7 +49,11 @@ case "$1" in
     esac
     exit 1 ;;
   -Rs|-R|-Rns) exit "${STUB_REMOVE_RC:-0}" ;;
-  -Qdtq)       exit "${STUB_ORPHANS_RC:-1}" ;;
+  -Qdtq)
+    # Emulate `pacman -Qdtq`: print orphan names. mono is an orphan only when the
+    # test asks for it (STUB_ORPHANS_RC=0), so the orphan gate can be driven both ways.
+    [ "${STUB_ORPHANS_RC:-1}" -eq 0 ] && echo mono
+    exit "${STUB_ORPHANS_RC:-1}" ;;
 esac
 exit 0'
 
@@ -109,6 +113,25 @@ assert_contains "$OUT" "Done!" "the script still reaches the end"
 reset
 run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME=
 assert_contains "$OUT" "KeePass2 removed." "a successful removal reports success"
+
+# ── issue #7: the mono-orphan gate must fire for an orphan and only then ────
+# An orphaned mono (nothing depends on it, not explicitly installed) is removed.
+reset
+run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME= \
+  STUB_MONO_INSTALLED=0 STUB_ORPHANS_RC=0
+assert_contains "$OUT" "Removed mono" "an orphaned mono is removed"
+
+# An explicitly-installed mono (not an orphan) must be kept untouched.
+reset
+run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME= \
+  STUB_MONO_INSTALLED=0 STUB_ORPHANS_RC=1
+assert_not_contains "$OUT" "Removed mono" "an explicitly-installed mono is kept"
+
+# A missing mono is never mentioned at all.
+reset
+run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME= \
+  STUB_MONO_INSTALLED=1 STUB_ORPHANS_RC=0
+assert_not_contains "$OUT" "Removed mono" "an absent mono is never removed"
 
 # ── a failed KeePassXC install must not print success (and must not abort) ──
 reset
