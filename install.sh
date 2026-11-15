@@ -16,17 +16,31 @@ if pacman -Qi keepass &>/dev/null; then
   # Kill any running KeePass2 instance first
   pkill -f "KeePass.exe" 2>/dev/null || true
   sleep 1
+  # Only report success when the package is actually gone: the removal is best
+  # effort (a locked db, a partial transaction), so a silent `|| true` would lie.
+  removed=false
   if [[ $EUID -eq 0 ]]; then
-    pacman -Rs --noconfirm keepass 2>/dev/null || pacman -R --noconfirm keepass 2>/dev/null || true
+    if pacman -Rs --noconfirm keepass 2>/dev/null || pacman -R --noconfirm keepass 2>/dev/null; then
+      removed=true
+    fi
   elif command -v sudo >/dev/null 2>&1; then
-    sudo pacman -Rs --noconfirm keepass 2>/dev/null || sudo pacman -R --noconfirm keepass 2>/dev/null || true
+    if sudo pacman -Rs --noconfirm keepass 2>/dev/null || sudo pacman -R --noconfirm keepass 2>/dev/null; then
+      removed=true
+    fi
   fi
-  echo "  KeePass2 removed."
+  if [[ $removed == true ]]; then
+    echo "  KeePass2 removed."
+  else
+    echo "  WARNING: could not remove KeePass2 — remove it manually: sudo pacman -R keepass"
+  fi
 fi
 
 # Install KeePassXC
-omarchy pkg add keepassxc
-echo "  KeePassXC installed."
+if omarchy pkg add keepassxc; then
+  echo "  KeePassXC installed."
+else
+  echo "  WARNING: could not install KeePassXC — install it manually: omarchy pkg add keepassxc"
+fi
 
 # ── 2. Open existing database in KeePassXC ────────────────────────────────────
 # If user has a .kdbx file that was used with KeePass2, KeePassXC reads the
@@ -41,7 +55,11 @@ fi
 if ! /usr/bin/python3 -c "import nacl" 2>/dev/null; then
   omarchy pkg add python-pynacl 2>/dev/null || pip install --break-system-packages pynacl 2>/dev/null || true
 fi
-echo "  pynacl available."
+if /usr/bin/python3 -c "import nacl" 2>/dev/null; then
+  echo "  pynacl available."
+else
+  echo "  WARNING: pynacl is not available — install it for qutebrowser integration: omarchy pkg add python-pynacl"
+fi
 
 # ── 4. Add KeePassXC to autostart ─────────────────────────────────────────────
 AUTOSTART="$HYPR_CONFIG_DIR/autostart.lua"
@@ -73,9 +91,25 @@ fi
 # and keep it in sync on future theme switches.
 chmod +x "$PLUGIN_DIR/hooks/keepassxc-theme-set" "$PLUGIN_DIR/bin/keepassxc-theme.py"
 CURRENT_THEME=$(omarchy theme current 2>/dev/null || true)
+# The hook is a documented no-op for a theme whose colors.toml cannot be found
+# (it exits 0 without writing anything), so success must be reported only when
+# the theme is actually locatable and the hook applied it.
+theme_colors_file() { # theme -> colors.toml path on stdout, or empty
+  local t base
+  t=$(echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+  for base in "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/themes" "/usr/share/omarchy/themes"; do
+    if [[ -f "$base/$t/colors.toml" ]]; then printf '%s\n' "$base/$t/colors.toml"; return 0; fi
+  done
+  return 1
+}
 if [[ -n "$CURRENT_THEME" ]]; then
-  OMARCHY_KEEPASSXC_DIR="$PLUGIN_DIR" bash "$PLUGIN_DIR/hooks/keepassxc-theme-set" "$CURRENT_THEME" || true
-  echo "  Set KeePassXC theme to match: $CURRENT_THEME"
+  if ! theme_colors_file "$CURRENT_THEME" >/dev/null; then
+    echo "  WARNING: theme '$CURRENT_THEME' has no colors.toml — KeePassXC theme left unchanged."
+  elif OMARCHY_KEEPASSXC_DIR="$PLUGIN_DIR" bash "$PLUGIN_DIR/hooks/keepassxc-theme-set" "$CURRENT_THEME"; then
+    echo "  Set KeePassXC theme to match: $CURRENT_THEME"
+  else
+    echo "  WARNING: could not set KeePassXC theme for: $CURRENT_THEME"
+  fi
 fi
 omarchy hook install theme-set "$PLUGIN_DIR/hooks/keepassxc-theme-set"
 echo "  Installed theme-set hook (as keepassxc-theme-set)."
