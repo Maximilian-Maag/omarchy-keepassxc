@@ -33,6 +33,21 @@ if pacman -Qi keepass &>/dev/null; then
   else
     echo "  WARNING: could not remove KeePass2 — remove it manually: sudo pacman -R keepass"
   fi
+
+  # mono is KeePass2's runtime. Remove it too — but only when it is now an
+  # orphan (nothing else depends on it, and it was not installed explicitly),
+  # so a mono the user actually wants is never touched.
+  if pacman -Qi mono &>/dev/null && pacman -Qdtq 2>/dev/null | grep -qx mono; then
+    removed_mono=false
+    if [[ $EUID -eq 0 ]]; then
+      if pacman -Rns --noconfirm mono 2>/dev/null; then removed_mono=true; fi
+    elif command -v sudo >/dev/null 2>&1; then
+      if sudo pacman -Rns --noconfirm mono 2>/dev/null; then removed_mono=true; fi
+    fi
+    if [[ $removed_mono == true ]]; then
+      echo "  Removed mono (KeePass2's runtime, no longer needed)."
+    fi
+  fi
 fi
 
 # Install KeePassXC
