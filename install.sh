@@ -126,8 +126,14 @@ if [[ -n "$CURRENT_THEME" ]]; then
     echo "  WARNING: could not set KeePassXC theme for: $CURRENT_THEME"
   fi
 fi
-omarchy hook install theme-set "$PLUGIN_DIR/hooks/keepassxc-theme-set"
-echo "  Installed theme-set hook (as keepassxc-theme-set)."
+# Guard the hook install the way the sibling omarchy-voxtype does: a missing
+# `omarchy` must not abort the install under `set -e` before the summary runs.
+if command -v omarchy >/dev/null 2>&1; then
+  omarchy hook install theme-set "$PLUGIN_DIR/hooks/keepassxc-theme-set"
+  echo "  Installed theme-set hook (as keepassxc-theme-set)."
+else
+  echo "  WARNING: omarchy not found — install the hook manually: omarchy hook install theme-set $PLUGIN_DIR/hooks/keepassxc-theme-set"
+fi
 
 # ── 6. Reload Hyprland ────────────────────────────────────────────────────────
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then

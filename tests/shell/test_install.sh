@@ -131,4 +131,32 @@ run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 ST
 assert_contains "$OUT" "Set KeePassXC theme to match: nord" "a real theme reports success"
 assert_contains "$CONFIG/keepassxc/keepassxc.ini" "ApplicationTheme=dark" "a real theme is applied to keepassxc.ini"
 
+# ── issue #6: with `omarchy` absent, the install still reaches its summary ──
+# Build a restricted PATH holding every stub EXCEPT omarchy plus the real shell
+# utilities install.sh itself needs, so `command -v omarchy` genuinely fails and
+# the (now guarded) `omarchy hook install` can no longer abort the script.
+SAFEBIN="$TMP/safebin"
+mkdir -p "$SAFEBIN"
+for s in pacman sudo pip pkill sleep python3; do ln -s "$BIN/$s" "$SAFEBIN/$s"; done
+for u in dirname find head grep cp chmod bash sed cat; do
+  real="$(command -v "$u" 2>/dev/null)" && ln -s "$real" "$SAFEBIN/$u"
+done
+if command -v omarchy >/dev/null 2>&1; then
+  # Prove the restricted PATH really hides omarchy (guards the guard).
+  if PATH="$SAFEBIN" command -v omarchy >/dev/null 2>&1; then
+    fail "the restricted PATH must not expose omarchy (test harness bug)"
+  else
+    pass "the restricted PATH hides omarchy"
+  fi
+fi
+
+reset
+env HOME="$HOME_FAKE" XDG_CONFIG_HOME="$CONFIG" PATH="$SAFEBIN" STUB_LOG="$LOG" \
+  HYPRLAND_INSTANCE_SIGNATURE= STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 \
+  STUB_PKG_KEEPASSXC_RC=0 STUB_THEME= bash "$INSTALL" >"$OUT" 2>&1
+rc=$?
+if (( rc == 0 )); then pass "a missing omarchy does not abort the install"; else fail "a missing omarchy must not abort the install (got $rc)"; fi
+assert_contains "$OUT" "Done!" "the install still reaches its summary without omarchy"
+assert_not_contains "$OUT" "Installed theme-set hook" "no hook is reported installed when omarchy is absent"
+
 exit "$FAIL"
