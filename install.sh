@@ -1,11 +1,96 @@
 #!/bin/bash
 # omarchy-keepassxc install script
+#
+#   ./install.sh             install / update everything
+#   ./install.sh --uninstall remove exactly what an install added, and only that
 
 set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HYPR_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+HYPR_CONFIG_DIR="$CONFIG_DIR/hypr"
 HYPR_MAIN="$HYPR_CONFIG_DIR/hyprland.lua"
+AUTOSTART="$HYPR_CONFIG_DIR/autostart.lua"
+FRAGMENT="$HYPR_CONFIG_DIR/keepassxc-bindings.lua"
+REQUIRE_LINE='require("hypr.keepassxc-bindings")'
+KEYBIND_MARKER='-- omarchy-keepassxc keybindings'
+AUTOSTART_MARKER='-- omarchy-keepassxc: start KeePassXC at login'
+AUTOSTART_LINE='o.launch_on_start("keepassxc")'
+HOOK_DEST="$CONFIG_DIR/omarchy/hooks/theme-set.d/keepassxc-theme-set"
+
+# ── remove_block: take an appended require/launch block back out of a file ─────
+# Rebuilt line by line, never `sed -i`: the user's config is only ever rewritten
+# one block smaller, and nothing is asked to interpret the rest of the file. The
+# installer appends each line as a block — a blank line, a `-- omarchy-keepassxc`
+# marker comment, then the line — so all three come back out together; leaving the
+# marker (and its blank line) behind would stack a new one on every install cycle.
+remove_block() {  # remove_block <file> <line> <marker>
+  local file="$1" line="$2" marker="$3"
+  [[ -f $file ]] || return 0
+  grep -qF -- "$line" "$file" || return 0
+  local kept l
+  kept="$(mktemp)"
+  local -a lines=() out=()
+  mapfile -t lines < "$file"
+  for l in "${lines[@]}"; do
+    if [[ $l == "$line" ]]; then
+      if (( ${#out[@]} )) && [[ ${out[-1]} == "$marker" ]]; then
+        unset 'out[-1]'
+        if (( ${#out[@]} )) && [[ -z ${out[-1]} ]]; then
+          unset 'out[-1]'
+        fi
+      fi
+      continue
+    fi
+    out+=("$l")
+  done
+  for l in ${out[@]+"${out[@]}"}; do
+    printf '%s\n' "$l"
+  done > "$kept"
+  mv "$kept" "$file"
+}
+
+# ── Uninstall ─────────────────────────────────────────────────────────────────
+# Removes exactly the artifacts an install adds — the bindings fragment, the
+# require block in hyprland.lua, the autostart entry, and the theme-set hook —
+# and nothing else. A target that is not ours is left alone, and the packages the
+# plugin depends on (the KeePass2/mono handling is a package operation, not a file
+# this script wrote) are never touched from here.
+uninstall() {
+  echo "omarchy-keepassxc: uninstalling"
+
+  if [[ -f $FRAGMENT ]]; then
+    if cmp -s "$PLUGIN_DIR/bin/bindings.lua" "$FRAGMENT"; then
+      rm -f "$FRAGMENT"
+      echo "  Removed the bindings fragment: $FRAGMENT"
+    else
+      echo "  WARNING: $FRAGMENT is not the shipped copy — left alone."
+    fi
+  fi
+
+  if [[ -f $HYPR_MAIN ]] && grep -qF -- "$REQUIRE_LINE" "$HYPR_MAIN"; then
+    remove_block "$HYPR_MAIN" "$REQUIRE_LINE" "$KEYBIND_MARKER"
+    echo "  Took the require line back out of $HYPR_MAIN"
+  fi
+
+  if [[ -f $AUTOSTART ]] && grep -qF -- "$AUTOSTART_MARKER" "$AUTOSTART"; then
+    remove_block "$AUTOSTART" "$AUTOSTART_LINE" "$AUTOSTART_MARKER"
+    echo "  Took the autostart entry back out of $AUTOSTART"
+  fi
+
+  if [[ -f $HOOK_DEST ]]; then
+    rm -f "$HOOK_DEST"
+    echo "  Removed the theme-set hook ($HOOK_DEST)"
+  fi
+
+  echo ""
+  echo "Done. Reload Hyprland config for the keybindings:  hyprctl reload"
+}
+
+if [[ ${1:-} == --uninstall ]]; then
+  uninstall
+  exit 0
+fi
 
 echo "omarchy-keepassxc: installing from $PLUGIN_DIR"
 

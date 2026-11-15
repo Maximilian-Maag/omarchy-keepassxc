@@ -22,6 +22,12 @@ omarchy plugin add https://github.com/Maximilian-Maag/omarchy-keepassxc --yes
 bash ~/.config/omarchy/plugins/Maximilian-Maag.keepassxc/install.sh
 ```
 
+To remove what the install added — and only that: `bash install.sh --uninstall`
+(or `bash ~/.config/omarchy/plugins/Maximilian-Maag.keepassxc/install.sh --uninstall`).
+It takes back the bindings fragment, the require block, the autostart entry and
+the theme-set hook, leaves your own config byte-identical, and never removes a
+package.
+
 ## After install
 
 Enable Browser Integration in KeePassXC:
