@@ -105,6 +105,26 @@ class ThemeRegressionCase(unittest.TestCase):
         self.assertIn("Pattern=[a-z]", lines)
         self.assertLess(lines.index("Pattern=[a-z]"), lines.index("ApplicationTheme=dark"))
 
+    def test_bom_prefixed_gui_first_line_does_not_append_a_second_gui(self):
+        # Bug pinned: a leading UTF-8 BOM made the first line start with '\ufeff['
+        # so `stripped == "[GUI]"` (and the closing guard) never matched and the
+        # writer appended a duplicate [GUI].
+        self.write_ini("\ufeff[GUI]\nFoo=1\n")
+        self.assertEqual(self.run_main("dark"), 0)
+        text = self.ini.read_text()
+        self.assertEqual(text.count("[GUI]"), 1)
+        self.assertIn("ApplicationTheme=dark", text)
+        self.assertIn("Foo=1", text)
+
+    def test_bom_prefixed_file_without_gui_still_gets_exactly_one_gui(self):
+        # Bug pinned: the same BOM defeat on a first line that is not [GUI].
+        self.write_ini("\ufeff[General]\nLastDir=/data\n")
+        self.assertEqual(self.run_main("dark"), 0)
+        text = self.ini.read_text()
+        self.assertEqual(text.count("[GUI]"), 1)
+        self.assertIn("ApplicationTheme=dark", text)
+        self.assertIn("LastDir=/data", text)
+
 
 if __name__ == "__main__":
     unittest.main()

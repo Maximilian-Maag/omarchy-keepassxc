@@ -28,7 +28,10 @@ def main() -> int:
     os.makedirs(os.path.dirname(ini), exist_ok=True)
 
     try:
-        with open(ini, encoding="utf-8") as fh:
+        # utf-8-sig strips a leading BOM if present (and is a plain utf-8 reader
+        # otherwise). A BOM-prefixed first line would otherwise defeat the header
+        # detection and the '[GUI]' equality check, appending a duplicate [GUI].
+        with open(ini, encoding="utf-8-sig") as fh:
             lines = fh.read().splitlines()
     except FileNotFoundError:
         lines = []
