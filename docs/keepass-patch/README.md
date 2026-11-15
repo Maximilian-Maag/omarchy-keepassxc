@@ -30,8 +30,8 @@ colours is to change the C++ palette and rebuild.
 - `src/gui/styles/dark/darkstyle.qss` — the handful of hardcoded greys
 
 Colours come from the theme's `colors.toml` (`background`, `foreground`,
-`accent`, `muted`, `selection`, `dark_foreground`, `light_foreground`,
-`bright_foreground`, `lighter_background`). Nothing is hardcoded in the
+`accent`, `muted`, `selection`, `dark_foreground`, `bright_foreground`,
+`lighter_background`). Nothing is hardcoded in the
 script, so any theme works.
 
 Every substitution is counted and asserted: a KeePassXC release that changes
