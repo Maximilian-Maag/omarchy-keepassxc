@@ -145,7 +145,12 @@ fi
 # ── 2. Open existing database in KeePassXC ────────────────────────────────────
 # If user has a .kdbx file that was used with KeePass2, KeePassXC reads the
 # same format — no migration needed. Just open it.
-KDBX=$(find "$HOME" -name "*.kdbx" -not -path "*/\.Trash/*" 2>/dev/null | head -1)
+#
+# `-quit` instead of `| head -1`: with `set -o pipefail`, head closing the pipe
+# made find die of SIGPIPE as soon as a second database existed, and the failed
+# assignment aborted the script before autostart and keybindings were wired.
+# `|| true` covers the permission errors find reports on unreadable directories.
+KDBX=$(find "$HOME" -name "*.kdbx" -not -path "*/.Trash/*" -print -quit 2>/dev/null || true)
 if [[ -n "$KDBX" ]]; then
   echo "  Found database: $KDBX"
   echo "  KeePassXC reads KeePass2 .kdbx files directly — no migration needed."

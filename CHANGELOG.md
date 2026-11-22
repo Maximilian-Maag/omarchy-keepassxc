@@ -2,6 +2,23 @@
 
 All notable changes to omarchy-keepassxc are documented here.
 
+## [1.3.3] — 2026-11-22
+
+### Fixed
+- **`install.sh` no longer aborts while it looks for an existing database.**
+  `KDBX=$(find "$HOME" -name "*.kdbx" … | head -1)` failed under
+  `set -euo pipefail` for two independent reasons: `find` exits 1 whenever it
+  cannot enter a directory — a docker `overlay2` under `~/.local/share` is
+  enough, because `2>/dev/null` hides the message but not the status — and
+  `head -1` closes the pipe while `find` still has output, so `find` dies of
+  SIGPIPE (exit 141 with 3000 databases, exit 0 with 2). Either failure fails the
+  assignment and `set -e` ends the run after the KeePassXC install but before the
+  autostart entry and the keybindings fragment, so KeePassXC never started at
+  login and `Super+Shift+/` was never bound while the run looked like an ordinary
+  failure. Fixed with `find … -print -quit` (stops at the first match) plus
+  `|| true`; the shell tests now cover both an unreadable directory and a home
+  with 1500 databases.
+
 ## [1.3.2] — 2026-11-02
 
 ### Added
