@@ -182,4 +182,36 @@ if (( rc == 0 )); then pass "a missing omarchy does not abort the install"; else
 assert_contains "$OUT" "Done!" "the install still reaches its summary without omarchy"
 assert_not_contains "$OUT" "Installed theme-set hook" "no hook is reported installed when omarchy is absent"
 
+# ── an unreadable directory in HOME must not abort the install ─────────────
+# `find "$HOME" … 2>/dev/null` still exits 1 when it cannot enter a directory
+# (a docker overlay2 under ~/.local/share is enough), and under `set -e` the
+# failed assignment ended the script before autostart and keybindings were
+# written. This is the failure that bit a real machine; `|| true` in the fix
+# covers it.
+reset
+mkdir -p "$HOME_FAKE/locked"
+chmod 000 "$HOME_FAKE/locked"
+run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME=
+rc=$?
+if (( rc == 0 )); then pass "an unreadable directory does not abort the install"; else fail "an unreadable directory must not abort the install (got $rc)"; fi
+assert_contains "$OUT" "Done!" "the script still reaches the end with an unreadable directory"
+chmod 755 "$HOME_FAKE/locked"
+rm -rf "$HOME_FAKE/locked"
+
+# ── a home with many databases must not abort the install ──────────────────
+# `find "$HOME" -name '*.kdbx' | head -1` died of SIGPIPE once find still had
+# more matches to write than the pipe buffer holds (measured: 3000 entries →
+# exit 141); with `set -o pipefail` that failure reached the assignment and
+# aborted the script before autostart and keybindings were wired. Two files are
+# not enough to reproduce it, so the fixture writes 1500.
+reset
+mkdir -p "$HOME_FAKE/kp-dbs"
+for i in $(seq 1 1500); do : > "$HOME_FAKE/kp-dbs/database-with-a-long-name-$i.kdbx"; done
+run_install STUB_KEEPASS_INSTALLED=0 STUB_REMOVE_RC=0 STUB_PKG_KEEPASSXC_RC=0 STUB_THEME=
+rc=$?
+if (( rc == 0 )); then pass "many databases do not abort the install"; else fail "many databases must not abort the install (got $rc)"; fi
+assert_contains "$OUT" "Found database:" "a database is still reported with many present"
+assert_contains "$OUT" "Done!" "the script still reaches the end with many databases"
+rm -rf "$HOME_FAKE/kp-dbs"
+
 exit "$FAIL"
